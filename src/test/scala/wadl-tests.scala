@@ -176,6 +176,7 @@ class NormalizeWADLSpec extends BaseWADLSpec {
             xmlns:xsd="http://www.w3.org/2001/XMLSchema">
             <resources base="https://test.api.openstack.com">
               <resource id="someId" path="a/b/c">
+   	        <param name="X-Auth-Token" style="header" type="xsd:string" required="true"/>
 	        <method href="#foo"/>
 	      </resource>
               <resource path="d/e"/>
@@ -195,8 +196,11 @@ class NormalizeWADLSpec extends BaseWADLSpec {
             xmlns:xsd="http://www.w3.org/2001/XMLSchema">
             <resources base="https://test.api.openstack.com">
               <resource id="someId" queryType="application/x-www-form-urlencoded" path="a">
+   	        <param name="X-Auth-Token" repeating="false" style="header" type="xsd:string" required="true"/>
                 <resource  id="someId-2" queryType="application/x-www-form-urlencoded" path="b">
+	          <param name="X-Auth-Token" repeating="false" style="header" type="xsd:string" required="true"/>
                   <resource  id="someId-3" queryType="application/x-www-form-urlencoded" path="c">
+	             <param name="X-Auth-Token" repeating="false" style="header" type="xsd:string" required="true"/>
 	             <method xmlns:rax="http://docs.rackspace.com/api" rax:id="foo"/>
                   </resource>
                 </resource>

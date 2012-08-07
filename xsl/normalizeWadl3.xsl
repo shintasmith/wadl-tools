@@ -64,7 +64,7 @@ This XSLT flattens or expands the path in the path attributes of the resource el
         mode="prune-params">
         <xsl:variable name="name" select="@name"/>
         <xsl:choose>
-            <xsl:when test="parent::wadl:resource[ancestor::wadl:resource/wadl:param[(@style = 'template' or @style = 'header' or @style='matrix') and @name = $name]]"/>
+            <xsl:when test="parent::wadl:resource[ancestor::wadl:resource/wadl:param[(@style = 'template' or @style='matrix') and @name = $name]]"/>
             <xsl:otherwise>
                 <xsl:copy>
                     <xsl:apply-templates select="node() | @*" mode="prune-params"/>
@@ -136,11 +136,11 @@ This XSLT flattens or expands the path in the path attributes of the resource el
 		<xsl:when test="@id"><xsl:attribute name="id" select="@id"/></xsl:when>		
 	      </xsl:choose>
 	      <!-- Possible Bug: Should I be copying header params down in tree format? -->
-	      <xsl:apply-templates select="wadl:param[@style = 'template']|*[not(namespace-uri() = 'http://wadl.dev.java.net/2009/02')]" mode="tree-format">
+	      <xsl:apply-templates select="wadl:param[@style = 'template' or @style = 'header']|*[not(namespace-uri() = 'http://wadl.dev.java.net/2009/02')]" mode="tree-format">
 		<xsl:with-param name="path" select="current-grouping-key()"/>
 	      </xsl:apply-templates>	      
 	      <xsl:if test="count(wadl:tokens/wadl:token) = $token-number">
-		  <xsl:apply-templates select="*[not(self::wadl:resource) and not(self::wadl:param[@style = 'template'])]" mode="tree-format"/>
+		  <xsl:apply-templates select="*[not(self::wadl:resource) and not(self::wadl:param[@style = 'template']) and not(self::wadl:param[@style = 'header'])]" mode="tree-format"/>
 		  <xsl:call-template name="group">
 		    <xsl:with-param name="token-number" select="1"/>
 		    <xsl:with-param name="resources" select="wadl:resource"/>
