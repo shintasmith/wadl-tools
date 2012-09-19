@@ -52,6 +52,7 @@
                 <xsl:variable name="type" select="."/>
                 <xsl:choose>
                     <xsl:when test="not(substring-before($type,'#') = '')">
+                        <!-- DWC: Notice here you're only grabbing methods from rtypes...resources can bein there as well... -->
                         <xsl:apply-templates select="document(substring-before($type,'#'),$context)//wadl:resource_type[@id = substring-after(.,'#')]/wadl:method" mode="#current">
                             <xsl:with-param name="path" select="$path"/>
                         </xsl:apply-templates>

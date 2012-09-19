@@ -45,6 +45,8 @@ Resolves hrefs on method and resource_type elements.
 	<xsl:output indent="yes"/>
 
 	<xsl:key name="ids" match="wadl:*[@id]" use="@id"/>
+	
+	<xsl:variable name="all_resource_types" select="//wadl:resource_type"/>
 
 	<xsl:variable name="processed">
 		<xsl:apply-templates mode="normalizeWadl2"/>
@@ -229,8 +231,17 @@ Resolves hrefs on method and resource_type elements.
 	</xsl:template>
 
 	<xsl:template match="wadl:resource[@type]" mode="normalizeWadl2">
+		<xsl:param name="seenTypes"/>
+		<xsl:param name="context" select="."/>
+		<xsl:param name="fqtypes">
+			<xsl:for-each select="tokenize(@type,' ')">
+				<xsl:choose>
+					<xsl:when test="starts-with(.,'#')"><xsl:value-of select="."/></xsl:when>
+					<xsl:otherwise><xsl:value-of select="concat(resolve-uri(substring-before(.,'#'),$context),substring-after(.,'#'))"/></xsl:otherwise>
+				</xsl:choose>
+			</xsl:for-each>
+		</xsl:param>			
         <xsl:param name="baseID" select="@id"/>
-	<xsl:param name="context" select="."/>
         <xsl:variable name="realBase">
             <xsl:choose>
                 <xsl:when test="@id and not($baseID)">
@@ -242,42 +253,42 @@ Resolves hrefs on method and resource_type elements.
             </xsl:choose>
         </xsl:variable>
 		<xsl:variable name="content">
-			<xsl:for-each select="tokenize(normalize-space(@type),' ')">
+			<xsl:for-each select="$fqtypes">
 				<xsl:variable name="id" select="substring-after(normalize-space(.),'#')"/>
-				<xsl:variable name="doc">
-					<xsl:choose>
-						<xsl:when test="starts-with(normalize-space(.),'http://') or starts-with(normalize-space(.),'file://')">
-							<xsl:value-of select="substring-before(normalize-space(.),'#')"/>
-						</xsl:when>
-						<xsl:otherwise>
-							<xsl:value-of select="resolve-uri(substring-before(normalize-space(.),'#'),base-uri($context))"/>
-						</xsl:otherwise>
-					</xsl:choose>
-				</xsl:variable>
+				<xsl:message>
+					currentType="<xsl:value-of select="."/>"
+					seenTypes="<xsl:value-of select="$seenTypes"/>"
+				</xsl:message>
+				<xsl:variable name="doc"><xsl:value-of select="substring-before(normalize-space(.),'#')"/></xsl:variable>
 				<xsl:choose>
-					<xsl:when test="starts-with(normalize-space(.),'#')">
-						<xsl:for-each select="$root/*[1]">
-							<xsl:apply-templates select="key('ids',$id)/*" mode="normalizeWadl2">
+					<xsl:when test="contains($seenTypes,concat(' ', . ,' '))"/>
+					<xsl:when test="starts-with(.,'#')">
+						<xsl:apply-templates select="$all_resource_types[@id = $id]/*" mode="normalizeWadl2"> <!--key('ids',$id)/*-->
                                 <xsl:with-param name="baseID" select="$realBase"/>
-                            </xsl:apply-templates>
-						</xsl:for-each>
+								<xsl:with-param name="seenTypes" select="concat($seenTypes, ' ', . , ' ')"/>
+                        </xsl:apply-templates>
 					</xsl:when>
 					<xsl:otherwise>
-						<xsl:variable name="included-wadl">
-							<xsl:apply-templates select="document($doc,$root)/*" mode="normalizeWadl2"/>
-						</xsl:variable>
-						<xsl:apply-templates select="$included-wadl//*[@id = $id]/*" mode="normalizeWadl2">
+						<xsl:apply-templates select="document($doc)/wadl:application/wadl:resource_type[@id = $id]/*" mode="normalizeWadl2">
                                 <xsl:with-param name="baseID" select="$realBase"/>
+							    <xsl:with-param name="seenTypes" select="concat($seenTypes, ' ', . , ' ')"/>
                         </xsl:apply-templates>
 					</xsl:otherwise>
 				</xsl:choose>
 			</xsl:for-each>
 			<xsl:apply-templates mode="normalizeWadl2"/>
 		</xsl:variable>
+		<xsl:variable name="compare">
+			<xsl:for-each select="tokenize($seenTypes,' ')">
+				<xsl:variable name="currentType" select="."/>
+				<xsl:if test="$currentType = $fqtypes[position() = last()]">1</xsl:if>
+			</xsl:for-each>
+		</xsl:variable>
 
 		<resource>
 			<xsl:copy-of select="@*[name() != 'type']"/>
-			<xsl:if test="not(@id)"><xsl:attribute name="id" select="raxf:generate-resource-id(.)"/></xsl:if>
+			<xsl:if test="not(@id) and not(ancestor::wadl:resource_type)"><xsl:attribute name="id" select="raxf:generate-resource-id(.)"/></xsl:if>
+			<xsl:if test="$compare = '1'"><xsl:attribute name="nextTurtle" select="@type"/></xsl:if>
 			<!-- Since we've combined resource types, we need to sort the
 	     elements to keep things valid against the schema -->
 			<xsl:copy-of select="$content/wadl:doc"/>

@@ -555,24 +555,33 @@
     </xsl:template>
 
     <xsl:template match="wadl:resource[@type]" mode="wadl-xsds">
+        <xsl:param name="types"/>
+        <xsl:param name="context" select="."/>
+<!--        <xsl:message>
+            1111111111111111111111111111
+            <xsl:value-of select="$types"/>
+            2222222222222222222222222222
+        </xsl:message>-->
         <xsl:for-each select="tokenize(normalize-space(@type),' ')">
-            <xsl:variable name="doc">
+            <xsl:variable name="doc"><xsl:value-of select="resolve-uri(substring-before(.,'#'), base-uri($context))"/></xsl:variable>
+            <xsl:variable name="fqtype">
                 <xsl:choose>
-                    <xsl:when test="starts-with(normalize-space(.),'http://') or starts-with(normalize-space(.),'file://') or starts-with(normalize-space(.),'test://')">
-                        <xsl:value-of select="substring-before(normalize-space(.),'#')"/>
-                    </xsl:when>
-                    <xsl:otherwise>
-                        <xsl:value-of select="substring-before(normalize-space(.),'#')"/>
-                    </xsl:otherwise>
+                    <xsl:when test="$doc != ''"><xsl:value-of select="concat($doc,'#',substring-after(.,'#'))"/></xsl:when>
+                    <xsl:otherwise><xsl:value-of select="."/></xsl:otherwise>
                 </xsl:choose>
             </xsl:variable>
+<!--            <xsl:message>
+                fqtype="<xsl:value-of select="$fqtype"/>"
+                doc="<xsl:value-of select="$doc"/>"
+            </xsl:message>-->
             <xsl:choose>
                 <xsl:when test="starts-with(normalize-space(.),'#')"/>
+                <!-- Handling recursive resource_types. This only matters if the recursion in a separate wadl: TODO: TESTME!!! -->                
+                <xsl:when test="contains($types,$fqtype)"/>
                 <xsl:otherwise>
-                    <xsl:message>
-                        <xsl:value-of select="$doc"/>
-                    </xsl:message>
-                    <xsl:apply-templates select="document($doc,$root)/*" mode="wadl-xsds"/>
+                    <xsl:apply-templates select="document($doc,$root)/*" mode="wadl-xsds">
+                        <xsl:with-param name="types" select="concat($types,' ',$fqtype,' ')"/>
+                    </xsl:apply-templates>
                 </xsl:otherwise>
             </xsl:choose>
         </xsl:for-each>
