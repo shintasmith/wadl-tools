@@ -233,6 +233,7 @@ Resolves hrefs on method and resource_type elements.
 	<xsl:template match="wadl:resource[@type]" mode="normalizeWadl2">
 		<xsl:param name="seenTypes"/>
 		<xsl:param name="context" select="."/>
+		<xsl:param name="startedInResourceTypeFlag" select="ancestor::wadl:resource_type/@id"/>
 		<xsl:param name="fqtypes">
 			<xsl:for-each select="tokenize(@type,' ')">
 				<xsl:choose>
@@ -254,24 +255,22 @@ Resolves hrefs on method and resource_type elements.
         </xsl:variable>
 		<xsl:variable name="content">
 			<xsl:for-each select="$fqtypes">
-				<xsl:variable name="id" select="substring-after(normalize-space(.),'#')"/>
-				<xsl:message>
-					currentType="<xsl:value-of select="."/>"
-					seenTypes="<xsl:value-of select="$seenTypes"/>"
-				</xsl:message>
+				<xsl:variable name="targetType" select="substring-after(normalize-space(.),'#')"/>
 				<xsl:variable name="doc"><xsl:value-of select="substring-before(normalize-space(.),'#')"/></xsl:variable>
 				<xsl:choose>
 					<xsl:when test="contains($seenTypes,concat(' ', . ,' '))"/>
 					<xsl:when test="starts-with(.,'#')">
-						<xsl:apply-templates select="$all_resource_types[@id = $id]/*" mode="normalizeWadl2"> <!--key('ids',$id)/*-->
+						<xsl:apply-templates select="$all_resource_types[@id = $targetType]/*" mode="normalizeWadl2"> <!--key('ids',$id)/*-->
                                 <xsl:with-param name="baseID" select="$realBase"/>
 								<xsl:with-param name="seenTypes" select="concat($seenTypes, ' ', . , ' ')"/>
+							    <xsl:with-param name="startedInResourceTypeFlag" select="$startedInResourceTypeFlag"/>
                         </xsl:apply-templates>
 					</xsl:when>
 					<xsl:otherwise>
-						<xsl:apply-templates select="document($doc)/wadl:application/wadl:resource_type[@id = $id]/*" mode="normalizeWadl2">
+						<xsl:apply-templates select="document($doc)/wadl:application/wadl:resource_type[@id = $targetType]/*" mode="normalizeWadl2">
                                 <xsl:with-param name="baseID" select="$realBase"/>
 							    <xsl:with-param name="seenTypes" select="concat($seenTypes, ' ', . , ' ')"/>
+								<xsl:with-param name="startedInResourceTypeFlag" select="$startedInResourceTypeFlag"/>
                         </xsl:apply-templates>
 					</xsl:otherwise>
 				</xsl:choose>
@@ -284,18 +283,32 @@ Resolves hrefs on method and resource_type elements.
 				<xsl:if test="$currentType = $fqtypes[position() = last()]">1</xsl:if>
 			</xsl:for-each>
 		</xsl:variable>
-
-		<resource>
-			<xsl:copy-of select="@*[name() != 'type']"/>
-			<xsl:if test="not(@id) and not(ancestor::wadl:resource_type)"><xsl:attribute name="id" select="raxf:generate-resource-id(.)"/></xsl:if>
-			<xsl:if test="$compare = '1'"><xsl:attribute name="nextTurtle" select="@type"/></xsl:if>
-			<!-- Since we've combined resource types, we need to sort the
-	     elements to keep things valid against the schema -->
-			<xsl:copy-of select="$content/wadl:doc"/>
-			<xsl:copy-of select="$content/wadl:param"/>
-			<xsl:copy-of select="$content/wadl:method"/>
-			<xsl:copy-of select="$content/wadl:resource"/>
-		</resource>
+	
+			<xsl:choose>
+				<xsl:when test="not($startedInResourceTypeFlag)">
+					<resource>
+						<xsl:copy-of select="@*[name() != 'type']"/>
+						<xsl:choose>
+							<xsl:when test="not(@id) and not($startedInResourceTypeFlag)"><xsl:attribute name="id" select="raxf:generate-resource-id(.)"/></xsl:when>
+							<xsl:otherwise>
+								<!-- nuke it -->
+							</xsl:otherwise>
+						</xsl:choose>
+						<xsl:if test="$compare = '1'"><xsl:attribute name="nextTurtle" select="@type"/></xsl:if>
+						<!-- Since we've combined resource types, we need to sort the
+				             elements to keep things valid against the schema -->
+						<xsl:if test="ancestor::wadl:resource_type"><xsl:attribute name="rax:source-type" select="concat('#',ancestor::wadl:resource_type/@id)"/></xsl:if>
+						<xsl:copy-of select="$content/wadl:doc"/>
+						<xsl:copy-of select="$content/wadl:param"/>
+						<xsl:copy-of select="$content/wadl:method"/>
+						<xsl:copy-of select="$content/wadl:resource"/>
+					</resource>
+				</xsl:when>
+				<xsl:otherwise>
+					<xsl:copy-of select="."/>
+				</xsl:otherwise>
+			</xsl:choose>
+	
 	</xsl:template>
 
 </xsl:stylesheet>
