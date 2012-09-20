@@ -30,7 +30,7 @@ This XSLT flattens or expands the path in the path attributes of the resource el
     <!-- path or tree -->
     
     <xsl:variable name="paths-tokenized">
-        <xsl:apply-templates select="$normalizeWadl2" mode="tokenize-paths"/>
+        <xsl:apply-templates select="$normalizeWadl2.1" mode="tokenize-paths"/>
     </xsl:variable>
 
     <!-- keep-format mode means we don't touch the formatting -->

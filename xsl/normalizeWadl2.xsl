@@ -36,6 +36,10 @@ Resolves hrefs on method and resource_type elements.
 			</xsl:otherwise>
 		</xsl:choose>	
 	</xsl:variable>
+	
+	<xsl:variable name="normalizeWadl2.1">
+		<xsl:apply-templates select="$normalizeWadl2" mode="cleanTurtles"/>
+	</xsl:variable>
 
 	<xsl:param name="strip-ids">0</xsl:param>
 
@@ -310,5 +314,37 @@ Resolves hrefs on method and resource_type elements.
 			</xsl:choose>
 	
 	</xsl:template>
+
+	<!-- =============================================== -->
+	<!--               Clean turtles mode                -->
+	<!-- =============================================== -->
+	<xsl:param name="supportTurtles">0</xsl:param>
+
+	<xsl:template match="node() | @*" mode="cleanTurtles">
+
+		<xsl:copy>
+			<xsl:apply-templates select="node() | @*" mode="cleanTurtles"/>
+		</xsl:copy>
+	</xsl:template>
+	
+	<xsl:template match="@rax:source-type" mode="cleanTurtles"/>
+	
+	<xsl:template match="wadl:resource[@nextTurtle]" mode="cleanTurtles">
+		<resource>
+			<xsl:choose>
+				<xsl:when test="$supportTurtles != '0'">
+					<xsl:attribute name="rax:nextTurtle"><xsl:value-of select="ancestor::wadl:resource[@rax:source-type = current()/@nextTurtle]/@id"/></xsl:attribute>
+				</xsl:when>
+				<xsl:otherwise>
+					<xsl:attribute name="type" select="@nextTurtle"/>					
+				</xsl:otherwise>
+			</xsl:choose>
+			<xsl:apply-templates select="node()|@*[local-name() != 'type' and local-name() != 'nextTurtle']" mode="cleanTurtles"/>
+		</resource>
+	</xsl:template>
+	
+	<xsl:template match="@rax:id[. = '']" mode="cleanTurtles"/>
+	<!-- =============================================== -->
+	
 
 </xsl:stylesheet>

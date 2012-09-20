@@ -103,7 +103,7 @@
         <xsl:choose>
             <xsl:when test="$format = 'path-format'">
                 <xsl:message>[INFO] Flattening resource paths</xsl:message>
-                <xsl:apply-templates select="$normalizeWadl2" mode="path-format"/>
+                <xsl:apply-templates select="$normalizeWadl2.1" mode="path-format"/>
             </xsl:when>
             <xsl:when test="$format = 'tree-format'">
                 <xsl:message>[INFO] Expanding resource paths to tree format</xsl:message>
@@ -114,7 +114,7 @@
             </xsl:when>
             <xsl:otherwise>
                 <xsl:message>[INFO] Leaving resource paths unchanged</xsl:message>
-                <xsl:apply-templates select="$normalizeWadl2" mode="keep-format"/>
+                <xsl:apply-templates select="$normalizeWadl2.1" mode="keep-format"/>
             </xsl:otherwise>
         </xsl:choose>
     </xsl:variable>
