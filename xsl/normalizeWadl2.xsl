@@ -29,20 +29,23 @@
 
   <xsl:param name="wadl2docbook">0</xsl:param>
 
-    <!-- Delcaring this to avoid errors in Oxygen while editing. This actually comes from normalizeWadl1.xsl -->
-    <xsl:param name="xsds"/>
-    
-    <xsl:variable name="normalizeWadl2">
-        <xsl:choose>
-            <xsl:when test="$strip-ids != 0">
-                <!-- Now we prune the generated id that is appended to all ids where we can do it safely -->
-                <xsl:apply-templates select="$processed" mode="strip-ids"/>
-            </xsl:when>
-            <xsl:otherwise>
-                <xsl:copy-of select="$processed"/>
-            </xsl:otherwise>
-        </xsl:choose>    
-    </xsl:variable>
+	<!-- Delcaring this to avoid errors in Oxygen while editing. This actually comes from normalizeWadl1.xsl -->
+	<xsl:param name="xsds"/>
+	
+	<xsl:variable name="normalizeWadl2">
+		<xsl:choose>
+			<xsl:when test="$strip-ids != 0">
+				<!-- Now we prune the generated rax:id that is appended to all ids where we can do it safely.
+					But apparently this mode isn't ever used. -->
+				<xsl:apply-templates select="$processed" mode="strip-ids"/>
+			</xsl:when>
+			<xsl:otherwise>
+				<!-- When we moved ids to rax:ids on methods, we were overzealous. Here we fix that when the methods 
+				are the descendants of a wadl:resource_type.-->
+				<xsl:apply-templates select="$processed" mode="fix-ids"/>
+			</xsl:otherwise>
+		</xsl:choose>	
+	</xsl:variable>
 
     <xsl:param name="strip-ids">0</xsl:param>
 
@@ -114,6 +117,7 @@
         </xsl:copy>
     </xsl:template>
 
+<<<<<<< HEAD
     <xsl:template match="*[@rax:id]" mode="strip-ids">
         <xsl:copy>
             <xsl:apply-templates select="@*" mode="strip-ids"/>
@@ -133,6 +137,49 @@
             <xsl:apply-templates mode="strip-ids"/>
         </xsl:copy>
     </xsl:template>
+=======
+	<xsl:template match="node() | @*" mode="fix-ids">
+		<xsl:copy>
+			<xsl:apply-templates select="node() | @*" mode="fix-ids"/>
+		</xsl:copy>
+	</xsl:template>
+
+	<xsl:template match="@rax:id[parent::wadl:method and ancestor::wadl:resource_type]" mode="fix-ids">
+       <xsl:variable name="myId" select="." as="xsd:string"/>
+       <xsl:choose>
+           <xsl:when test="ancestor::wadl:application/wadl:method[@id=$myId]">
+               <xsl:copy/>
+           </xsl:when>
+           <xsl:otherwise>
+               <xsl:attribute name="id" select="."/>
+           </xsl:otherwise>
+       </xsl:choose>
+	</xsl:template>
+
+   <xsl:template match="@rax:id[parent::wadl:application]" mode="fix-ids">
+       <xsl:attribute name="id" select="."/>
+   </xsl:template>
+
+	<xsl:template match="*[@rax:id]" mode="strip-ids">
+		<xsl:copy>
+			<xsl:apply-templates select="@*" mode="strip-ids"/>
+			<xsl:choose>
+				<xsl:when test="//*[
+			not(parent::wadl:application) and 
+			not(generate-id(.) = generate-id(current()) ) and 
+			@rax:id = current()/@rax:id]">
+					<xsl:message>[INFO] Modifying repeated id: <xsl:value-of select="@rax:id"/> to <xsl:value-of select="@id"/></xsl:message>
+				</xsl:when>
+				<xsl:otherwise>
+					<xsl:attribute name="id">
+						<xsl:value-of select="@rax:id"/>
+					</xsl:attribute>
+				</xsl:otherwise>
+			</xsl:choose>
+			<xsl:apply-templates mode="strip-ids"/>
+		</xsl:copy>
+	</xsl:template>
+>>>>>>> upstream/master
 
     <xsl:template match="wadl:method[parent::wadl:application]|wadl:param[parent::wadl:application]|wadl:representation[parent::wadl:application]" mode="strip-ids"/>
 
@@ -198,6 +245,7 @@
         </xsl:choose>
     </xsl:template>
 
+<<<<<<< HEAD
     <xsl:template match="wadl:method|wadl:representation" mode="copy-nw2">
         <xsl:param name="generated-id"/>
         <xsl:param name="foreign-attrs"/>
@@ -244,6 +292,64 @@
             </xsl:otherwise>
         </xsl:choose>
     </xsl:template>
+=======
+	<xsl:template match="wadl:method|wadl:representation" mode="copy-nw2">
+		<xsl:param name="generated-id"/>
+		<xsl:param name="foreign-attrs"/>
+		<xsl:copy>
+			<xsl:copy-of select="@*[not(local-name() = 'id')]"/>
+			<xsl:copy-of select="$foreign-attrs"/>
+			<xsl:attribute name="rax:id" select="@id"/>
+			<xsl:apply-templates select="*|comment()|processing-instruction()|text()"  mode="normalizeWadl2"/>
+		</xsl:copy>
+	</xsl:template>
+
+	<xsl:template match="wadl:method[not(@href) and (ancestor::wadl:resource or ancestor::wadl:resource_type)]" mode="normalizeWadl2">
+		<xsl:copy>
+			<xsl:copy-of select="@*[not(local-name() = 'id' and namespace-uri(.) = '')]"/>
+			<xsl:if test="@id">
+				<xsl:attribute name="rax:id" select="@id"/>
+			</xsl:if>
+			<xsl:apply-templates select="*|comment()|processing-instruction()|text()"  mode="normalizeWadl2"/>
+		</xsl:copy>
+	</xsl:template>
+	
+	<xsl:template match="wadl:param" mode="copy-nw2 normalizeWadl2">
+		<xsl:param name="generated-id"/>
+		<xsl:param name="foreign-attrs"/>
+		<xsl:variable name="type-nsuri" select="namespace-uri-for-prefix(substring-before(@type,':'),.)"/>
+		<xsl:variable name="type" select="substring-after(@type,':')"/>
+		<xsl:choose>
+			<xsl:when test="@default and $xsds/*/xsd:schema[@targetNamespace = $type-nsuri]/xsd:simpleType[@name = $type]/xsd:restriction[@base = 'xsd:string']/xsd:enumeration">
+				<xsl:copy>
+					<xsl:copy-of select="@*[not(local-name() = 'id') and not(local-name() = 'type')]"/>
+					<xsl:attribute name="rax:id">
+						<xsl:choose>
+							<xsl:when test="@id"><xsl:value-of select="@id"/></xsl:when>
+							<xsl:otherwise><xsl:value-of select="generate-id()"/></xsl:otherwise>
+						</xsl:choose>
+					</xsl:attribute>
+					<xsl:attribute name="type">xsd:string</xsl:attribute>
+					<!-- Explicitly adding xsd namespaced to ensure that xsd is the right prefix -->
+					<xsl:namespace name="xsd" select="'http://www.w3.org/2001/XMLSchema'"/>
+					<xsl:attribute name="rax:type"><xsl:value-of select="@type"/></xsl:attribute>
+					<xsl:apply-templates select="*|comment()|processing-instruction()|text()"  mode="normalizeWadl2"/>
+					<!-- Resolve enumerated values from xsd -->
+					<xsl:for-each select="$xsds/*/xsd:schema[@targetNamespace = $type-nsuri]/xsd:simpleType[@name = $type]/xsd:restriction[@base = 'xsd:string']/xsd:enumeration">
+						<option value="{@value}"/> <!-- Can I put docs in here? Should I? -->
+					</xsl:for-each>
+				</xsl:copy>
+			</xsl:when>
+			<xsl:otherwise>
+				<xsl:copy>
+					<xsl:copy-of select="@*[not(local-name() = 'id')]"/>
+					<xsl:attribute name="rax:id" select="@id"/>
+					<xsl:apply-templates select="*|comment()|processing-instruction()|text()"  mode="normalizeWadl2"/>
+				</xsl:copy>
+			</xsl:otherwise>
+		</xsl:choose>
+	</xsl:template>
+>>>>>>> upstream/master
 
     <xsl:template match="wadl:resource[@type]" mode="normalizeWadl2">
         <xsl:param name="baseID" select="@id"/>
